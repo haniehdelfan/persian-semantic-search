@@ -1,0 +1,9 @@
+numpy>=1.26
+sentence-transformers>=3.0
+datasets>=2.19
+fastapi>=0.110
+uvicorn[standard]>=0.29
+anthropic>=0.40
+matplotlib>=3.8
+pytest>=8.0
+httpx>=0.27

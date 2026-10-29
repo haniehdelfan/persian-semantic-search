@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "persian-semantic-search"
+version = "0.1.0"
+description = "Benchmarking multilingual embedding models for Persian semantic search, with a FastAPI search service."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["persian", "farsi", "nlp", "embeddings", "semantic-search", "information-retrieval", "fastapi"]
+dependencies = [
+    "numpy>=1.26",
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "pydantic>=2",
+]
+
+[project.optional-dependencies]
+ml = [
+    "sentence-transformers>=3.0",
+    "datasets>=2.19",
+    "anthropic>=0.40",
+    "matplotlib>=3.8",
+]
+dev = ["pytest>=8.0", "httpx>=0.27", "ruff>=0.5"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501", "B905"]
