@@ -1,0 +1,68 @@
+name: Build evaluation set
+
+# Step 1 of 2. Samples the Persian Wikipedia corpus, asks Claude to write one question per sampled
+# article, and commits the DRAFT questions to data/. You then review them in the GitHub web UI
+# (delete ambiguous lines from data/queries.jsonl) before running the "Run benchmark" workflow.
+# Needs the repository secret ANTHROPIC_API_KEY.
+
+on:
+  workflow_dispatch:
+    inputs:
+      n_docs:
+        description: "Number of Wikipedia articles in the corpus"
+        default: "5000"
+      n_queries:
+        description: "Number of evaluation questions"
+        default: "100"
+      overwrite:
+        description: "Overwrite existing data/queries.jsonl (destroys your manual review!)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      N_DOCS: ${{ inputs.n_docs }}
+      N_QUERIES: ${{ inputs.n_queries }}
+      OVERWRITE: ${{ inputs.overwrite }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Guard against overwriting a reviewed query set
+        run: |
+          if [ -f data/queries.jsonl ] && [ "$OVERWRITE" != "true" ]; then
+            echo "::error::data/queries.jsonl already exists. Re-run with overwrite=true only if you want to discard it."
+            exit 1
+          fi
+
+      - name: Check API key
+        run: |
+          test -n "$ANTHROPIC_API_KEY" || { echo "::error::Add the repository secret ANTHROPIC_API_KEY (Settings > Secrets and variables > Actions)"; exit 1; }
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install
+        run: pip install -e . datasets anthropic
+
+      - name: Sample the corpus
+        run: python -m pss.prepare_data --n-docs "$N_DOCS"
+
+      - name: Generate draft questions
+        run: python -m pss.build_eval --n-queries "$N_QUERIES" --mode llm
+
+      - name: Commit drafts
+        run: |
+          echo "{\"n_docs\": $N_DOCS}" > data/corpus_params.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/queries.jsonl data/queries_review.csv data/corpus_params.json
+          git commit -m "Add draft evaluation questions (needs manual review)"
+          git push
